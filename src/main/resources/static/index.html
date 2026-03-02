@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JerryMouse Console</title>
+    <style>
+        :root { --primary: #6366f1; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 40px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 25px; }
+        select, input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
+        input { flex-grow: 1; }
+        button { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+
+        .results-area { border-top: 2px solid #f1f5f9; pt: 20px; display: none; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: bold; background: #dcfce7; color: #166534; margin-bottom: 15px; }
+        .header-list { list-style: none; padding: 0; font-family: monospace; font-size: 0.9rem; }
+        .header-list li { padding: 6px 10px; background: #f8fafc; margin-bottom: 4px; border-radius: 4px; border-left: 3px solid #cbd5e1; }
+        .label { font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: bold; margin-bottom: 5px; display: block; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2 style="margin-top:0">🐭 JerryMouse Mini-Postman</h2>
+
+    <div class="form-group">
+        <select id="m">
+            <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
+        </select>
+        <input type="text" id="p" value="/balls" placeholder="Enter path...">
+        <button onclick="fire()">Send Request</button>
+    </div>
+
+    <div id="results" class="results-area">
+        <span class="label">Response Status</span>
+        <div id="st" class="status-badge"></div>
+
+        <span class="label">Response Headers</span>
+        <ul id="rh" class="header-list"></ul>
+    </div>
+</div>
+
+<script>
+    async function fire() {
+        const m = document.getElementById('m').value;
+        const p = document.getElementById('p').value;
+        const resArea = document.getElementById('results');
+        const headerList = document.getElementById('rh');
+        const statusBadge = document.getElementById('st');
+
+        headerList.innerHTML = ''; // Clear old headers
+        resArea.style.display = 'block';
+
+        try {
+            const response = await fetch(p, { method: m });
+
+            statusBadge.innerText = response.status + ' ' + response.statusText;
+            statusBadge.style.background = response.ok ? '#dcfce7' : '#fee2e2';
+            statusBadge.style.color = response.ok ? '#166534' : '#991b1b';
+
+            // Logic to format response headers just like request headers
+            response.headers.forEach((value, key) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<b>${key}:</b> ${value}`;
+                headerList.appendChild(li);
+            });
+
+        } catch (err) {
+            statusBadge.innerText = 'CONNECTION ERROR';
+            statusBadge.style.background = '#f1f5f9';
+            headerList.innerHTML = '<li>' + err.message + '</li>';
+        }
+    }
+</script>
+</body>
+</html>
