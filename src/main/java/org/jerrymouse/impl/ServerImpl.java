@@ -3,6 +3,7 @@ package org.jerrymouse.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.jerrymouse.IProcessor;
 import org.jerrymouse.IServer;
+import org.springframework.web.servlet.DispatcherServlet;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -27,20 +28,15 @@ public class ServerImpl implements IServer {
     // spawn 10,000 threads and crash your RAM.
     private final ExecutorService clientHandlerPool = Executors.newFixedThreadPool(200);
 
-    public ServerImpl(int port) {
+    public ServerImpl(int port, DispatcherServlet dispatcher) {
         this.port = port;
-        this.processor = new HttpRequestProcessorImpl();
+        this.processor = new SpringRequestProcessor(dispatcher);
         try {
             this.serverSocket = new ServerSocket(port);
             this.running = true;
         } catch (IOException e) {
             log.error("Failed to initialize ServerSocket on port {}: {}", port, e.getMessage());
         }
-    }
-
-    public static void main(String[] args) {
-        ServerImpl serverImpl = new ServerImpl(9000);
-        serverImpl.run();
     }
 
     @Override
