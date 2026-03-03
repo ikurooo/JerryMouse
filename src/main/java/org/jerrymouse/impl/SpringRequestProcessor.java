@@ -2,13 +2,12 @@ package org.jerrymouse.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jerrymouse.IProcessor;
+import org.jerrymouse.IReader;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.util.ServletRequestPathUtils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -25,19 +24,35 @@ public class SpringRequestProcessor implements IProcessor {
     public void process(InputStream in, OutputStream out) {
         try {
             JerryRequest jerryRequest = new JerryRequest();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-            String requestLine = reader.readLine();
+            IReader reader = new JerryHeaderReader(in, 8192);
+            String requestLine;
+            try {
+                requestLine = reader.readLine();
+            } catch (IOException e) {
+                this.sendError(out, 414, "URI Too Long");
+                return;
+            } catch (Exception e) {
+                this.sendError(out, 500, "Internal Server Error");
+                return;
+            }
 
             if (requestLine == null || requestLine.isEmpty()) return;
             log.info("Processing Request: {}", requestLine);
 
             String[] parts = requestLine.split(" ");
-            if (parts.length < 2) {
-                this.sendError(out, 431, "Request Header Fields Too Large");
+            if (parts.length != 3) {
+                this.sendError(out, 400, "Bad Request: Invalid Request Line");
                 return;
             }
 
-            String method = parts[0];
+            try {
+                String method = validateAndNormalizeMethod(parts[0]);
+                jerryRequest.setMethod(method);
+            } catch (UnsupportedOperationException e) {
+                this.sendError(out, 501, "Not Implemented");
+                return;
+            }
+
             String fullUri = parts[1];
             String path;
             String queryString = null;
@@ -50,7 +65,6 @@ public class SpringRequestProcessor implements IProcessor {
                 path = fullUri;
             }
 
-            jerryRequest.setMethod(method);
             jerryRequest.setUri(path);
             jerryRequest.setQueryString(queryString);
 
@@ -117,6 +131,16 @@ public class SpringRequestProcessor implements IProcessor {
             case 431 -> "Request Header Fields Too Large";
             case 500 -> "Internal Server Error";
             default -> "Error";
+        };
+    }
+
+    public String validateAndNormalizeMethod(String input) {
+        if (input == null) return null;
+
+        return switch (input.toUpperCase()) {
+            case "GET", "POST", "PUT", "DELETE", "PATCH",
+                 "HEAD", "OPTIONS", "TRACE", "CONNECT" -> input.toUpperCase();
+            default -> throw new UnsupportedOperationException("Method " + input + " not supported");
         };
     }
 
